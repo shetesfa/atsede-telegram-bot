@@ -155,6 +155,18 @@ async def handle_survey_callback(update: Update, context: ContextTypes.DEFAULT_T
     except Exception as e:
         logger.warning(f"Could not notify admin: {e}")
 
+async def cmd_reset_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Allows Admin (@Shetesfa) to wipe all survey data and start fresh."""
+    if update.effective_user.id != ADMIN_ID:
+        return
+    init_survey_excel()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Responses"
+    ws.append(["ቀን እና ሰዓት (Timestamp)", "የተጠቃሚ መለያ (User ID)", "ሙሉ ስም (Full Name)", "የቴሌግራም ስም (Username)", "የተመረጠው ምርጫ (Choice)"])
+    wb.save(SURVEY_EXCEL)
+    await update.message.reply_text("🧹 ሁሉም የድምጽ መረጃዎች ተሰርዘዋል! በአዲስ መጀመር ይችላሉ። (All survey data wiped clean!)")
+
 async def cmd_survey_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows summary of votes and sends the Excel file to admin."""
     init_survey_excel()
@@ -341,12 +353,14 @@ def main():
     # 1. English slash commands
     app.add_handler(CommandHandler(["ask", "survey"], cmd_ask))
     app.add_handler(CommandHandler(["stats", "result"], cmd_survey_stats))
+    app.add_handler(CommandHandler(["reset", "clear"], cmd_reset_survey))
     
     # 2. Amharic triggers (works with or without slash: /ጠይቅ, /መጠይቅ, መጠይቅ, ጥያቄ, አስተያየት)
     amharic_survey_pattern = r'^(/)?(ጠይቅ|መጠይቅ|ጥያቄ|አስተያየት)$'
     amharic_stats_pattern = r'^(/)?(ውጤት|ማጠቃለያ|ስታትስቲክስ)$'
     app.add_handler(MessageHandler(filters.Regex(amharic_survey_pattern), cmd_ask))
     app.add_handler(MessageHandler(filters.Regex(amharic_stats_pattern), cmd_survey_stats))
+    app.add_handler(MessageHandler(filters.Regex(r'^(/)?(አጽዳ|አድስ|reset)$'), cmd_reset_survey))
     
     app.add_handler(CallbackQueryHandler(handle_survey_callback))
 
