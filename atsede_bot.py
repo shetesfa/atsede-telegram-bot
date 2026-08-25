@@ -55,24 +55,36 @@ WORKING_DIR = os.path.dirname(os.path.abspath(__file__))
 SURVEY_EXCEL = os.path.join(WORKING_DIR, "survey_results.xlsx")
 
 async def check_is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """Checks if a user is an authorized admin by ID, username, or group admin status."""
+    """Checks if a user is an authorized admin by ID, username, group admin status, or anonymous admin."""
     user = update.effective_user
+    msg = update.effective_message
+
+    # Allow anonymous group admin / channel post
+    if msg and msg.sender_chat and update.effective_chat and msg.sender_chat.id == update.effective_chat.id:
+        return True
+    if user and user.id == 1087968824:  # GroupAnonymousBot
+        return True
+
     if not user:
         return False
+
     # 1. Match by Telegram ID
     if user.id in ADMIN_IDS:
         return True
-    # 2. Match by Username
+
+    # 2. Match by Username (case-insensitive)
     if user.username and user.username.lower().replace("@", "") in ADMIN_USERNAMES:
         return True
+
     # 3. Match by Group Admin status in the group
     if update.effective_chat and update.effective_chat.type in ["group", "supergroup"]:
         try:
             member = await context.bot.get_chat_member(update.effective_chat.id, user.id)
             if member.status in ["creator", "administrator"]:
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error checking group admin: {e}")
+
     return False
 
 # -------------------------------------------------------------
@@ -109,6 +121,10 @@ def record_vote(user_id, full_name, username, choice_text):
 # -------------------------------------------------------------
 async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends the survey question with inline buttons to the group (Admins only)."""
+    msg = update.effective_message
+    if not msg:
+        return
+
     if not await check_is_admin(update, context):
         return  # Silently ignore non-admins
 
@@ -129,7 +145,7 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
+    await msg.reply_text(
         survey_text, reply_markup=reply_markup, parse_mode="Markdown"
     )
 
