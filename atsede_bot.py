@@ -54,14 +54,25 @@ ADMIN_USERNAMES = ["shetesfa", "dawitmesenko", "abamekari"]  # Authorized Admins
 WORKING_DIR = os.path.dirname(os.path.abspath(__file__))
 SURVEY_EXCEL = os.path.join(WORKING_DIR, "survey_results.xlsx")
 
-def is_admin(user) -> bool:
-    """Checks if a user is in the authorized admin list."""
+async def check_is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Checks if a user is an authorized admin by ID, username, or group admin status."""
+    user = update.effective_user
     if not user:
         return False
+    # 1. Match by Telegram ID
     if user.id in ADMIN_IDS:
         return True
+    # 2. Match by Username
     if user.username and user.username.lower().replace("@", "") in ADMIN_USERNAMES:
         return True
+    # 3. Match by Group Admin status in the group
+    if update.effective_chat and update.effective_chat.type in ["group", "supergroup"]:
+        try:
+            member = await context.bot.get_chat_member(update.effective_chat.id, user.id)
+            if member.status in ["creator", "administrator"]:
+                return True
+        except Exception:
+            pass
     return False
 
 # -------------------------------------------------------------
@@ -98,8 +109,7 @@ def record_vote(user_id, full_name, username, choice_text):
 # -------------------------------------------------------------
 async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends the survey question with inline buttons to the group (Admins only)."""
-    user = update.effective_user
-    if not is_admin(user):
+    if not await check_is_admin(update, context):
         return  # Silently ignore non-admins
 
     survey_text = (
@@ -173,8 +183,7 @@ async def handle_survey_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def cmd_reset_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Allows authorized admins to wipe all survey data and start fresh."""
-    user = update.effective_user
-    if not is_admin(user):
+    if not await check_is_admin(update, context):
         return  # Silently ignore non-admins
 
     init_survey_excel()
@@ -187,8 +196,7 @@ async def cmd_reset_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_survey_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows summary of votes and sends the Excel file to admin (Admins only)."""
-    user = update.effective_user
-    if not is_admin(user):
+    if not await check_is_admin(update, context):
         return  # Silently ignore non-admins
 
     init_survey_excel()
@@ -377,12 +385,14 @@ def main():
     app.add_handler(CommandHandler(["stats", "result"], cmd_survey_stats))
     app.add_handler(CommandHandler(["reset", "clear"], cmd_reset_survey))
     
-    # 2. Amharic triggers (works with or without slash: /ጠይቅ, /መጠይቅ, መጠይቅ, ጥያቄ, አስተያየት)
-    amharic_survey_pattern = r'^(/)?(ጠይቅ|መጠይቅ|ጥያቄ|አስተያየት)$'
-    amharic_stats_pattern = r'^(/)?(ውጤት|ማጠቃለያ|ስታትስቲክስ)$'
+    # 2. Broad regex triggers (matches "መጠይቅ", "ጠይቅ", "ጥያቄ", "አስተያየት", "ውጤት", "አጽዳ" with/without slash and trailing spaces/mentions)
+    amharic_survey_pattern = r'(?i)^\s*(/)?(ጠይቅ|መጠይቅ|ጥያቄ|አስተያየት|ask|survey)'
+    amharic_stats_pattern = r'(?i)^\s*(/)?(ውጤት|ማጠቃለያ|ስታትስቲክስ|stats|result)'
+    amharic_reset_pattern = r'(?i)^\s*(/)?(አጽዳ|አድስ|reset|clear)'
+    
     app.add_handler(MessageHandler(filters.Regex(amharic_survey_pattern), cmd_ask))
     app.add_handler(MessageHandler(filters.Regex(amharic_stats_pattern), cmd_survey_stats))
-    app.add_handler(MessageHandler(filters.Regex(r'^(/)?(አጽዳ|አድስ|reset)$'), cmd_reset_survey))
+    app.add_handler(MessageHandler(filters.Regex(amharic_reset_pattern), cmd_reset_survey))
     
     app.add_handler(CallbackQueryHandler(handle_survey_callback))
 
