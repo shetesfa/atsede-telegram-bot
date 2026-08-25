@@ -1,0 +1,5 @@
+*.html
+*.docx
+*.bat
+__pycache__/
+*.pyc
