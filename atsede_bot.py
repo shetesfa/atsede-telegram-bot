@@ -2,10 +2,28 @@ import os
 import sys
 import glob
 import logging
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime
 import openpyxl
 
 sys.stdout.reconfigure(encoding='utf-8')
+
+# Lightweight HTTP Health Check server for Render Free Web Service
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Atsede Teguhan Bot is Running 24/7!")
+
+    def log_message(self, format, *args):
+        return  # Suppress health check logging
+
+def start_health_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    server.serve_forever()
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -314,6 +332,8 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
 # -------------------------------------------------------------
 def main():
     print("🚀 Bot starting...")
+    # Start health check server for Render / cloud platforms
+    threading.Thread(target=start_health_server, daemon=True).start()
     init_survey_excel()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
