@@ -58,9 +58,17 @@ async def check_is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Checks if a user is an authorized admin by ID, username, group admin status, or anonymous admin."""
     user = update.effective_user
     msg = update.effective_message
+    chat = update.effective_chat
+
+    logger.info(f"Incoming command from User: {user.full_name if user else 'No User'} (ID: {user.id if user else 'None'}, @{user.username}) in Chat: '{chat.title if chat else 'Private'}' ({chat.type if chat else 'None'})")
+
+    # In private chat, always allow the admins
+    if chat and chat.type == "private":
+        if user and (user.id in ADMIN_IDS or (user.username and user.username.lower().replace("@", "") in ADMIN_USERNAMES)):
+            return True
 
     # Allow anonymous group admin / channel post
-    if msg and msg.sender_chat and update.effective_chat and msg.sender_chat.id == update.effective_chat.id:
+    if msg and msg.sender_chat and chat and msg.sender_chat.id == chat.id:
         return True
     if user and user.id == 1087968824:  # GroupAnonymousBot
         return True
@@ -77,10 +85,10 @@ async def check_is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return True
 
     # 3. Match by Group Admin status in the group
-    if update.effective_chat and update.effective_chat.type in ["group", "supergroup"]:
+    if chat and chat.type in ["group", "supergroup"]:
         try:
-            member = await context.bot.get_chat_member(update.effective_chat.id, user.id)
-            if member.status in ["creator", "administrator"]:
+            member = await context.bot.get_chat_member(chat.id, user.id)
+            if member.status in ["creator", "administrator", "owner"]:
                 return True
         except Exception as e:
             logger.warning(f"Error checking group admin: {e}")
