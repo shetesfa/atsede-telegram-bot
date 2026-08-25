@@ -48,7 +48,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = "8706655732:AAHs877SHaGX7HnHVa80VAyafiA2GnqBPW8"
+BOT_TOKEN = "8706655732:AAH9O7Aq_of5iUK-g0D72MYvyHWpg3gPCvM"
 ADMIN_IDS = [1537845176]  # @Shetesfa (Your Telegram ID)
 ADMIN_USERNAMES = ["shetesfa", "dawitmesenko", "abamekari"]  # Authorized Admins
 WORKING_DIR = os.path.dirname(os.path.abspath(__file__))
