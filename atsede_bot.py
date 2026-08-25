@@ -374,8 +374,6 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
 # -------------------------------------------------------------
 def main():
     print("🚀 Bot starting...")
-    # Start health check server for Render / cloud platforms
-    threading.Thread(target=start_health_server, daemon=True).start()
     init_survey_excel()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -411,8 +409,22 @@ def main():
     )
 
     app.add_handler(conv_handler)
-    print("✅ Atsede Teguhan Bot is running and waiting for commands!")
-    app.run_polling(drop_pending_updates=True)
+    
+    port = int(os.environ.get("PORT", 0))
+    render_url = os.environ.get("RENDER_EXTERNAL_URL", "https://atsede-bot.onrender.com")
+
+    if port > 0:
+        print(f"🚀 Running in Webhook Mode on port {port} at {render_url}...")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path="telegram",
+            webhook_url=f"{render_url}/telegram",
+            drop_pending_updates=True,
+        )
+    else:
+        print("🚀 Running in Polling Mode...")
+        app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
