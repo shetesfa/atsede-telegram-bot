@@ -49,9 +49,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = "8706655732:AAHs877SHaGX7HnHVa80VAyafiA2GnqBPW8"
-ADMIN_ID = 1537845176  # @Shetesfa (Your Telegram ID)
+ADMIN_IDS = [1537845176]  # @Shetesfa (Your Telegram ID)
+ADMIN_USERNAMES = ["shetesfa", "dawitmesenko", "abamekari"]  # Authorized Admins
 WORKING_DIR = os.path.dirname(os.path.abspath(__file__))
 SURVEY_EXCEL = os.path.join(WORKING_DIR, "survey_results.xlsx")
+
+def is_admin(user) -> bool:
+    """Checks if a user is in the authorized admin list."""
+    if not user:
+        return False
+    if user.id in ADMIN_IDS:
+        return True
+    if user.username and user.username.lower().replace("@", "") in ADMIN_USERNAMES:
+        return True
+    return False
 
 # -------------------------------------------------------------
 # 1. EXCEL DATABASE HELPER FOR SURVEY
@@ -86,7 +97,12 @@ def record_vote(user_id, full_name, username, choice_text):
 # 2. GROUP SURVEY HANDLERS
 # -------------------------------------------------------------
 async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends the survey question with inline buttons to the group."""
+    """Sends the survey question with inline buttons to the group (Admins only)."""
+    user = update.effective_user
+    if not is_admin(user):
+        await update.message.reply_text("⚠️ ይቅርታ! የአስተያየት መጠይቅ ማስጀመር የሚችሉት የተፈቀደላቸው አድሚኖች ብቻ ናቸው።")
+        return
+
     survey_text = (
         "📢 **የአስተያየት መጠይቅ (Survey)**\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -151,14 +167,18 @@ async def handle_survey_callback(update: Update, context: ContextTypes.DEFAULT_T
             f"📱 Username፦ {username_str}\n"
             f"🗳️ የመረጡት፦ **{selected_choice}**"
         )
-        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_alert, parse_mode="Markdown")
+        for admin_id in ADMIN_IDS:
+            await context.bot.send_message(chat_id=admin_id, text=admin_alert, parse_mode="Markdown")
     except Exception as e:
         logger.warning(f"Could not notify admin: {e}")
 
 async def cmd_reset_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Allows Admin (@Shetesfa) to wipe all survey data and start fresh."""
-    if update.effective_user.id != ADMIN_ID:
+    """Allows authorized admins to wipe all survey data and start fresh."""
+    user = update.effective_user
+    if not is_admin(user):
+        await update.message.reply_text("⚠️ ይቅርታ! ይህንን ትእዛዝ የመጠቀም ፍቃድ የለዎትም።")
         return
+
     init_survey_excel()
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -168,7 +188,12 @@ async def cmd_reset_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🧹 ሁሉም የድምጽ መረጃዎች ተሰርዘዋል! በአዲስ መጀመር ይችላሉ። (All survey data wiped clean!)")
 
 async def cmd_survey_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Shows summary of votes and sends the Excel file to admin."""
+    """Shows summary of votes and sends the Excel file to admin (Admins only)."""
+    user = update.effective_user
+    if not is_admin(user):
+        await update.message.reply_text("⚠️ ይቅርታ! የድምጽ ውጤት ማጠቃለያ ማየት የሚችሉት የተፈቀደላቸው አድሚኖች ብቻ ናቸው።")
+        return
+
     init_survey_excel()
     wb = openpyxl.load_workbook(SURVEY_EXCEL)
     ws = wb.active
