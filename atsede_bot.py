@@ -100,8 +100,7 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends the survey question with inline buttons to the group (Admins only)."""
     user = update.effective_user
     if not is_admin(user):
-        await update.message.reply_text("⚠️ ይቅርታ! የአስተያየት መጠይቅ ማስጀመር የሚችሉት የተፈቀደላቸው አድሚኖች ብቻ ናቸው።")
-        return
+        return  # Silently ignore non-admins
 
     survey_text = (
         "📢 **የአስተያየት መጠይቅ (Survey)**\n"
@@ -176,8 +175,7 @@ async def cmd_reset_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Allows authorized admins to wipe all survey data and start fresh."""
     user = update.effective_user
     if not is_admin(user):
-        await update.message.reply_text("⚠️ ይቅርታ! ይህንን ትእዛዝ የመጠቀም ፍቃድ የለዎትም።")
-        return
+        return  # Silently ignore non-admins
 
     init_survey_excel()
     wb = openpyxl.Workbook()
@@ -191,8 +189,7 @@ async def cmd_survey_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Shows summary of votes and sends the Excel file to admin (Admins only)."""
     user = update.effective_user
     if not is_admin(user):
-        await update.message.reply_text("⚠️ ይቅርታ! የድምጽ ውጤት ማጠቃለያ ማየት የሚችሉት የተፈቀደላቸው አድሚኖች ብቻ ናቸው።")
-        return
+        return  # Silently ignore non-admins
 
     init_survey_excel()
     wb = openpyxl.load_workbook(SURVEY_EXCEL)
