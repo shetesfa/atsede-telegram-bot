@@ -393,6 +393,16 @@ def main():
     init_survey_excel()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+    # Debug Logger to see all incoming group messages
+    async def log_incoming(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        u = update.effective_user
+        c = update.effective_chat
+        m = update.effective_message
+        txt = m.text if m else "No text"
+        print(f"📩 [MESSAGE RECEIVED] Chat: '{c.title}' (ID: {c.id}) | From: '{u.full_name}' (@{u.username}, ID: {u.id}) | Text: '{txt}'")
+    
+    app.add_handler(MessageHandler(filters.ALL, log_incoming), group=-1)
+
     # Survey Handlers for Group
     # 1. English slash commands
     app.add_handler(CommandHandler(["ask", "survey"], cmd_ask))
@@ -439,7 +449,17 @@ def main():
             drop_pending_updates=True,
         )
     else:
-        print("🚀 Running in Polling Mode...")
+        # Running locally: Clean up any old webhooks and start polling
+        import requests
+        try:
+            requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook?drop_pending_updates=true", timeout=5)
+        except Exception:
+            pass
+        print("=" * 60)
+        print("🤖 [LOCAL MODE] Atsede Teguhan Bot is running LIVE!")
+        print("👉 You can test in group: type 'መጠይቅ' or '/ask'")
+        print("👉 You can test in private: send '/start'")
+        print("=" * 60)
         app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
